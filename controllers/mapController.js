@@ -283,7 +283,7 @@ exports.getMaps = async (req, res) => {
 
   try {
     const limit = 10
-    const { category = "All", query = "", page = 1, sort = "popularity" } = req.query
+    const { category = "All", query = "", page = 1, sort = "popularity", userId } = req.query
 
     let sortOption
     if (sort === "dateAdded") {
@@ -304,6 +304,10 @@ exports.getMaps = async (req, res) => {
         { description: { $regex: query, $options: "i" } },
         { code: { $regex: query, $options: "i" } },
       ]
+    }
+
+    if (userId) {
+      queryObject.creator = userId
     }
 
     const totalMaps = await Map.countDocuments(queryObject)
