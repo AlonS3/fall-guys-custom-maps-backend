@@ -1,44 +1,56 @@
-const mongoose = require('mongoose');
-const passportLocalMongoose = require('passport-local-mongoose');
-const findOrCreate = require('mongoose-findorcreate');
+const mongoose = require("mongoose")
+const passportLocalMongoose = require("passport-local-mongoose")
+const findOrCreate = require("mongoose-findorcreate")
 
 const User = new mongoose.Schema({
-  nickname: { 
+  nickname: {
     type: String,
-    required: true
+    required: true,
   },
-  status: { 
+  isCustomName: {
+    type: Boolean,
+    default: false,
+  },
+  status: {
     type: String,
-    default: ''
+    default: "",
   },
   googleId: {
     type: String,
     required: true,
-    unique: true
-  }, 
-  provider: { 
-    type: String,
-    required: true
+    unique: true,
   },
-  displayName: { 
+  provider: {
     type: String,
-    required: true
+    required: true,
+  },
+  displayName: {
+    type: String,
+    required: true,
   },
   email: {
     type: String,
     lowercase: true,
     unique: true,
     required: [true, "can't be blank"],
-    match: [/\S+@\S+\.\S+/, 'is invalid'],
+    match: [/\S+@\S+\.\S+/, "is invalid"],
     index: true,
   },
-  photo: { 
-    type: String
+  photo: {
+    type: String,
   },
-  maps: { type: [{ type: mongoose.Types.ObjectId, ref: 'Map' }] }
-});
+  maps: { type: [{ type: mongoose.Types.ObjectId, ref: "Map" }] },
+})
 
-User.plugin(findOrCreate);
-User.plugin(passportLocalMongoose, { usernameField: 'email' });
+User.index(
+  { nickname: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { isCustomName: true },
+  }
+)
 
-module.exports = mongoose.model('User', User);
+User.plugin(findOrCreate)
+User.plugin(passportLocalMongoose, { usernameField: "email" })
+
+module.exports = mongoose.model("User", User)
