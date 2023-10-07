@@ -4,8 +4,8 @@ Joi.objectId = require("joi-objectid")(Joi)
 const validator = (schema) => (payload) => schema.validate(payload)
 
 const createMapSchema = Joi.object({
-  title: Joi.string().min(6).max(45).required(),
-  description: Joi.string().min(6).max(700).required(),
+  title: Joi.string().trim().min(6).max(45).required(),
+  description: Joi.string().trim().min(6).max(700).required(),
   code: Joi.string()
     .required()
     .pattern(/^[0-9]{4}-[0-9]{4}-[0-9]{4}$/)
@@ -14,10 +14,9 @@ const createMapSchema = Joi.object({
 }).unknown(false)
 
 const updateMapSchema = Joi.object({
-  title: Joi.string().min(1).optional(),
-  description: Joi.string().optional(),
+  title: Joi.string().trim().min(6).max(45).optional(),
+  description: Joi.string().trim().min(6).max(700).optional(),
   category: Joi.string().valid("Casual", "Art", "Challenge").optional(),
-  images: Joi.array().items(Joi.string()).optional(),
 })
   .min(1)
   .unknown(false)
@@ -27,8 +26,8 @@ const mapParamsSchema = Joi.object({
 }).unknown(false)
 
 const updateUserInformationSchema = Joi.object({
-  nickname: Joi.string().min(1).optional(),
-  status: Joi.string().optional(),
+  nickname: Joi.string().trim().min(3).max(45).optional(),
+  status: Joi.string().trim().min(0).max(45).optional(),
 })
   .min(1)
   .unknown(false)

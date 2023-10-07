@@ -102,47 +102,66 @@ exports.getUserProfile = async (req, res) => {
 }
 
 exports.deleteUser = async (req, res) => {
+  // Check if user exists
+  const userExists = await User.exists({ _id: req.user._id })
+  if (!userExists) {
+    return res.status(404).json({ error: "User not found" })
+  }
+
+  const sessionCollection = mongoose.connection.collection("sessions")
   const session = await mongoose.startSession()
+  let allImageKeys = []
 
   try {
     // Start a transaction
-
     session.startTransaction()
+
+    // Fetch all the likes associated with the user
+    const userLikes = await MapLike.find({ user: req.user._id }, { session })
+
+    // Gather all map IDs the user has liked
+    const likedMapIds = userLikes.map((userLike) => userLike.map)
+
+    // Decrement the likesCount for all maps the user has liked
+    await Map.updateMany({ _id: { $in: likedMapIds } }, { $inc: { likesCount: -1 } }, { session: session })
+
+    // Delete all the likes associated with the user
+    await MapLike.deleteMany({ user: req.user._id }, { session })
 
     // Find the user's maps
     const userMaps = await Map.find({ creator: req.user._id }, { session })
 
+    // Gather all image keys
+    for (let userMap of userMaps) {
+      allImageKeys.push(...userMap.images)
+    }
+
     // Delete the user's maps
     await Map.deleteMany({ creator: req.user._id }, { session })
-
-    // Remove the user's maps from the likedMaps array of all users who liked them
-    for (let userMap of userMaps) {
-      await User.updateMany(
-        { likedMaps: userMap._id },
-        { $pull: { likedMaps: userMap._id } },
-        { session: session, multi: true, useFindAndModify: false }
-      )
-    }
 
     // Delete the user
     await User.deleteOne({ _id: req.user._id }, { session })
 
+    // Delete all sessions associated with the user within the transaction
+    await sessionCollection.deleteMany({ "session.passport.user": req.user._id.toString() }, { session })
+
     // Commit the transaction
     await session.commitTransaction()
-
-    // Clear JWT cookie
-    res.clearCookie("jwt")
-
-    // Respond with a success message
-    res.json({ message: "User account and associated maps deleted successfully" })
   } catch (error) {
-    // There was an error deleting the account
+    // There was an error with the database operations
     res.status(500).json({ error: "Error deleting account" })
     await session.abortTransaction()
+    return // Exit the function to prevent further processing
   } finally {
     // End the session
     session.endSession()
   }
+
+  // Delete the images from s3
+  await rollbackS3Uploads(allImageKeys)
+
+  // Respond with a success message regardless of S3 outcome
+  res.json({ message: "User account and associated maps deleted successfully" })
 }
 
 exports.updateUserInformation = async (req, res) => {

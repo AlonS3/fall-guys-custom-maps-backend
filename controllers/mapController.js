@@ -30,7 +30,7 @@ exports.getMap = async (req, res) => {
 
     // Prepare a response object that includes a 'likesCount' property instead of the 'likes' array
     const responseMap = map.toObject() // Convert the Mongoose document to a plain JavaScript object
-    responseMap.userLiked = false
+    responseMap.isLikedByCurrentUser = false
     if (req.user) {
       try {
         let like = await MapLike.findOne({
@@ -38,10 +38,13 @@ exports.getMap = async (req, res) => {
           map: mapId,
         })
         if (like) {
-          responseMap.userLiked = true
+          responseMap.isLikedByCurrentUser = true
         }
       } catch (err) {}
     }
+
+    responseMap.images = responseMap.images.map((fileName) => process.env.CLOUDFRONT_DOMAIN + fileName)
+
     res.status(200).json(responseMap)
   } catch (err) {
     res.status(500).json({ error: "Fetching map failed, please try again." })
@@ -54,6 +57,11 @@ exports.createMap = async (req, res, next) => {
 
   if (error || !files?.length) {
     return res.status(422).json({ error: "Invalid inputs passed, please check your data." })
+  }
+  // Check if user exists
+  const userExists = await User.exists({ _id: req.user._id })
+  if (!userExists) {
+    return res.status(404).json({ error: "User not found" })
   }
 
   const optimizedFiles = await optimizeImages(files)
@@ -251,7 +259,17 @@ exports.deleteMap = async (req, res, next) => {
     session.startTransaction()
 
     // First remove the map from the user's maps array
-    await User.findByIdAndUpdate(req.user._id, { $pull: { maps: mapId } }, { session: session, new: true, useFindAndModify: false })
+    const updatedUser = await User.findByIdAndUpdate(
+      req.user._id,
+      { $pull: { maps: mapId } },
+      { session: session, new: false, useFindAndModify: false }
+    )
+
+    if (!updatedUser) {
+      await session.abortTransaction()
+      session.endSession()
+      return res.status(404).json({ error: "User not found." })
+    }
 
     // Also delete all likes associated with this post
     await MapLike.deleteMany({ map: mapId })

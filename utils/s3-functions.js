@@ -42,6 +42,7 @@ exports.rollbackS3Uploads = async (keys) => {
     await Promise.all(deletePromises)
     return true
   } catch (err) {
+    console.error("Error deleting images from S3:", err)
     return false
   }
 }

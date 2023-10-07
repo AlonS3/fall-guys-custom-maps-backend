@@ -1,44 +1,39 @@
-const express = require("express");
-const router = express.Router();
-const upload = require('../utils/upload')
+const express = require("express")
+const router = express.Router()
+const upload = require("../utils/upload")
 
-const {authenticateJWT} = require("../middlewares/jwtAuth");
-const { googleUpdateAuth, logout } = require("../controllers/authController");
-const { deleteUser, updateUserInformation, getUserProfile } = require('../controllers/userController');
+const { authenticateJWT } = require("../middlewares/jwtAuth")
+const { googleUpdateAuth, logout, authenticateSession } = require("../controllers/authController")
+const { deleteUser, updateUserInformation, getUserProfile } = require("../controllers/userController")
 const { createMap, updateMap, likeMap, unlikeMap, deleteMap } = require("../controllers/mapController")
 
-
-router.get("/test", authenticateJWT, (req, res) => {
-  res.json({ message: "Authenticated route working correctly"});
-});
-
-router.get("/profile", authenticateJWT, getUserProfile)
+router.get("/profile", authenticateSession, getUserProfile)
 
 //update profile from google account
-router.get("/user/auth/google/update", authenticateJWT, googleUpdateAuth);
+router.get("/user/auth/google/update", authenticateSession, googleUpdateAuth)
 
 // delete user
-router.delete("/user", authenticateJWT, deleteUser);
+router.delete("/user", authenticateSession, deleteUser)
 
 // update user information
-router.patch("/user", authenticateJWT, updateUserInformation);
+router.patch("/user", authenticateSession, updateUserInformation)
 
 // log user out
-router.get('/logout', authenticateJWT, logout);
+router.get("/logout", authenticateSession, logout)
 
 // add new map
-router.post("/map", authenticateJWT , upload, createMap)
+router.post("/map", authenticateSession, upload, createMap)
 
 // edit map
-router.patch("/map/:mapId", authenticateJWT, updateMap)
+router.patch("/map/:mapId", authenticateSession, updateMap)
 
 // delete map
-router.delete("/map/:mapId", authenticateJWT, deleteMap)
+router.delete("/map/:mapId", authenticateSession, deleteMap)
 
 // like a map
-router.patch("/map/like/:mapId", authenticateJWT, likeMap)
+router.patch("/map/like/:mapId", authenticateSession, likeMap)
 
 // unlike a map
-router.patch("/map/unlike/:mapId", authenticateJWT, unlikeMap)
+router.patch("/map/unlike/:mapId", authenticateSession, unlikeMap)
 
-module.exports = router;
+module.exports = router
